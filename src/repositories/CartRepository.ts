@@ -1,24 +1,25 @@
 import { v4 as uuidv4 } from 'uuid';
 import CartItemModel, { CartItem } from '../models/CartItem.model';
+import { SequelizeModelInstance } from '../types/sequelize';
 
 class CartRepository {
   async findAll(): Promise<CartItem[]> {
     const cartItems = await CartItemModel.findAll({
       order: [['created_at', 'DESC']],
     });
-    return cartItems.map((item: any) => this.mapToCartItem(item));
+    return cartItems.map((item) => this.mapToCartItem(item as SequelizeModelInstance<CartItem>));
   }
 
   async findById(id: string): Promise<CartItem | undefined> {
     const cartItem = await CartItemModel.findByPk(id);
-    return cartItem ? this.mapToCartItem(cartItem as any) : undefined;
+    return cartItem ? this.mapToCartItem(cartItem as SequelizeModelInstance<CartItem>) : undefined;
   }
 
   async findByProductId(productId: string): Promise<CartItem | undefined> {
     const cartItem = await CartItemModel.findOne({
       where: { productId },
     });
-    return cartItem ? this.mapToCartItem(cartItem as any) : undefined;
+    return cartItem ? this.mapToCartItem(cartItem as SequelizeModelInstance<CartItem>) : undefined;
   }
 
   async create(cartItem: Omit<CartItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<CartItem> {
@@ -26,16 +27,16 @@ class CartRepository {
     const created = await CartItemModel.create({
       id,
       ...cartItem,
-    } as any);
-    return this.mapToCartItem(created as any);
+    });
+    return this.mapToCartItem(created as SequelizeModelInstance<CartItem>);
   }
 
   async update(id: string, updates: Partial<CartItem>): Promise<CartItem | null> {
     const cartItem = await CartItemModel.findByPk(id);
     if (!cartItem) return null;
 
-    await (cartItem as any).update(updates);
-    return this.mapToCartItem(cartItem as any);
+    await (cartItem as SequelizeModelInstance<CartItem>).update(updates);
+    return this.mapToCartItem(cartItem as SequelizeModelInstance<CartItem>);
   }
 
   async delete(id: string): Promise<boolean> {
@@ -52,13 +53,13 @@ class CartRepository {
     });
   }
 
-  private mapToCartItem(model: any): CartItem {
+  private mapToCartItem(model: SequelizeModelInstance<CartItem>): CartItem {
     return {
       id: model.id,
-      productId: model.productId || model.product_id,
+      productId: model.productId,
       quantity: model.quantity,
-      createdAt: model.createdAt || model.created_at,
-      updatedAt: model.updatedAt || model.updated_at,
+      createdAt: model.createdAt,
+      updatedAt: model.updatedAt,
     };
   }
 

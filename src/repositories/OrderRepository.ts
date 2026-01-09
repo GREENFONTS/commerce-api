@@ -1,19 +1,71 @@
 import { v4 as uuidv4 } from 'uuid';
 import OrderModel, { Order } from '../models/Order.model';
 import OrderItemModel, { OrderItem } from '../models/OrderItem.model';
+import { PaginatedResult, PaginationParams } from '../utils/response';
+import { SequelizeModelWithIncludes } from '../types/sequelize';
 
 class OrderRepository {
-  async findAll(): Promise<Order[]> {
-    const orders = await OrderModel.findAll({
+  async findAll(
+    query?: { id?: string; orderNumber?: string; status?: Order['status'] },
+    pagination?: PaginationParams
+  ): Promise<Order[] | PaginatedResult<Order>> {
+    const where: any = {};
+    
+    if (query?.id) {
+      where.id = query.id;
+    }
+    
+    if (query?.orderNumber) {
+      where.orderNumber = query.orderNumber;
+    }
+    
+    if (query?.status) {
+      where.status = query.status;
+    }
+    
+    if (!pagination) {
+      const orders = await OrderModel.findAll({
+        where: Object.keys(where).length > 0 ? where : undefined,
+        include: [
+          {
+            model: OrderItemModel,
+            as: 'items',
+          },
+        ],
+        order: [['created_at', 'DESC']],
+      });
+      return orders.map((order) => this.mapToOrder(order as SequelizeModelWithIncludes<Order, { items?: OrderItem[] }>));
+    }
+
+    const { page, limit } = pagination;
+    const offset = (page - 1) * limit;
+
+    const { count, rows } = await OrderModel.findAndCountAll({
+      where: Object.keys(where).length > 0 ? where : undefined,
       include: [
         {
           model: OrderItemModel,
           as: 'items',
         },
       ],
+      limit,
+      offset,
       order: [['created_at', 'DESC']],
     });
-    return orders.map((order: any) => this.mapToOrder(order));
+
+    const totalPages = Math.ceil(count / limit);
+
+    return {
+      data: rows.map((order) => this.mapToOrder(order as SequelizeModelWithIncludes<Order, { items?: OrderItem[] }>)),
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
   }
 
   async findById(id: string): Promise<Order | undefined> {
@@ -25,7 +77,7 @@ class OrderRepository {
         },
       ],
     });
-    return order ? this.mapToOrder(order as any) : undefined;
+    return order ? this.mapToOrder(order as SequelizeModelWithIncludes<Order, { items?: OrderItem[] }>) : undefined;
   }
 
   async findByOrderNumber(orderNumber: string): Promise<Order | undefined> {
@@ -38,7 +90,7 @@ class OrderRepository {
         },
       ],
     });
-    return order ? this.mapToOrder(order as any) : undefined;
+    return order ? this.mapToOrder(order as SequelizeModelWithIncludes<Order, { items?: OrderItem[] }>) : undefined;
   }
 
   async create(order: Omit<Order, 'id' | 'createdAt' | 'orderNumber'> & { orderNumber?: string }): Promise<Order> {
@@ -54,10 +106,10 @@ class OrderRepository {
       customerName: order.customerName,
       shippingAddress: order.shippingAddress,
       notes: order.notes,
-    } as any);
+    });
 
     const orderItems = await OrderItemModel.bulkCreate(
-      order.items.map((item: any) => ({
+      order.items.map((item) => ({
         id: item.id,
         orderId: id,
         productId: item.productId,
@@ -65,29 +117,27 @@ class OrderRepository {
         quantity: item.quantity,
         price: item.price,
         subtotal: item.subtotal,
-      })) as any[]
+      }))
     );
 
-    return {
-      id: (createdOrder as any).id,
-      orderNumber: (createdOrder as any).orderNumber || (createdOrder as any).order_number,
-      status: (createdOrder as any).status,
-      items: orderItems.map((item: any) => this.mapToOrderItem(item)),
-      total: parseFloat((createdOrder as any).total.toString()),
-      customerEmail: (createdOrder as any).customerEmail || (createdOrder as any).customer_email,
-      customerName: (createdOrder as any).customerName || (createdOrder as any).customer_name,
-      shippingAddress: (createdOrder as any).shippingAddress || (createdOrder as any).shipping_address,
-      notes: (createdOrder as any).notes,
-      createdAt: (createdOrder as any).createdAt || (createdOrder as any).created_at,
-      updatedAt: (createdOrder as any).updatedAt || (createdOrder as any).updated_at,
-    };
+    // Reload the order with items to get the full relationship
+    const orderWithItems = await OrderModel.findByPk(id, {
+      include: [
+        {
+          model: OrderItemModel,
+          as: 'items',
+        },
+      ],
+    });
+
+    return this.mapToOrder(orderWithItems! as SequelizeModelWithIncludes<Order, { items?: OrderItem[] }>);
   }
 
   async update(id: string, updates: Partial<Order>): Promise<Order | null> {
     const order = await OrderModel.findByPk(id);
     if (!order) return null;
 
-    await (order as any).update({
+    await (order as SequelizeModelWithIncludes<Order>).update({
       ...updates,
       updatedAt: new Date(),
     });
@@ -101,30 +151,30 @@ class OrderRepository {
       ],
     });
     
-    return updatedOrder ? this.mapToOrder(updatedOrder as any) : null;
+    return updatedOrder ? this.mapToOrder(updatedOrder as SequelizeModelWithIncludes<Order, { items?: OrderItem[] }>) : null;
   }
 
-  private mapToOrder(model: any): Order {
+  private mapToOrder(model: SequelizeModelWithIncludes<Order, { items?: OrderItem[] }>): Order {
     return {
       id: model.id,
-      orderNumber: model.orderNumber || model.order_number,
+      orderNumber: model.orderNumber,
       status: model.status,
-      items: (model.items || []).map((item: any) => this.mapToOrderItem(item)),
+      items: (model.items || []).map((item) => this.mapToOrderItem(item as SequelizeModelWithIncludes<OrderItem>)),
       total: parseFloat(model.total.toString()),
-      customerEmail: model.customerEmail || model.customer_email,
-      customerName: model.customerName || model.customer_name,
-      shippingAddress: model.shippingAddress || model.shipping_address,
+      customerEmail: model.customerEmail,
+      customerName: model.customerName,
+      shippingAddress: model.shippingAddress,
       notes: model.notes,
-      createdAt: model.createdAt || model.created_at,
-      updatedAt: model.updatedAt || model.updated_at,
+      createdAt: model.createdAt,
+      updatedAt: model.updatedAt,
     };
   }
 
-  private mapToOrderItem(model: any): OrderItem {
+  private mapToOrderItem(model: SequelizeModelWithIncludes<OrderItem>): OrderItem {
     return {
       id: model.id,
-      productId: model.productId || model.product_id,
-      productName: model.productName || model.product_name,
+      productId: model.productId,
+      productName: model.productName,
       quantity: model.quantity,
       price: parseFloat(model.price.toString()),
       subtotal: parseFloat(model.subtotal.toString()),

@@ -1,9 +1,10 @@
 import { Product } from '../models/Product.model';
 import { productRepository } from '../repositories/ProductRepository';
+import { PaginatedResult, PaginationParams } from '../utils/response';
 
 export class ProductService {
-  async getAllProducts(): Promise<Product[]> {
-    return await productRepository.findAll();
+  async getAllProducts(pagination?: PaginationParams): Promise<Product[] | PaginatedResult<Product>> {
+    return await productRepository.findAll(pagination);
   }
 
   async getProductById(id: string): Promise<Product | null> {

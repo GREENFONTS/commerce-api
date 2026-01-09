@@ -6,10 +6,14 @@ import { cartRepository } from '../repositories/CartRepository';
 import { productRepository } from '../repositories/ProductRepository';
 import { productService } from './ProductService';
 import { cartService } from './CartService';
+import { PaginatedResult, PaginationParams } from '../utils/response';
 
 export class OrderService {
-  async getAllOrders(): Promise<Order[]> {
-    return await orderRepository.findAll();
+  async getAllOrders(
+    query?: { id?: string; orderNumber?: string; status?: Order['status'] },
+    pagination?: PaginationParams
+  ): Promise<Order[] | PaginatedResult<Order>> {
+    return await orderRepository.findAll(query, pagination);
   }
 
   async getOrderById(id: string): Promise<Order | null> {
@@ -85,14 +89,6 @@ export class OrderService {
     await cartService.clearCart();
 
     return order;
-  }
-
-  async updateOrderStatus(id: string, status: Order['status']): Promise<Order | null> {
-    return await orderRepository.update(id, { status });
-  }
-
-  async updateOrder(id: string, updates: Partial<Order>): Promise<Order | null> {
-    return await orderRepository.update(id, updates);
   }
 }
 

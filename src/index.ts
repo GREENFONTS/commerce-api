@@ -8,6 +8,7 @@ import routes from './routes';
 import { connectDatabase } from './database/config';
 import { seedProducts } from './database/seeders/seed';
 import { validateAppEnv } from './utils/env';
+import { ResponseHandler } from './utils/response';
 import './models'; // Initialize models and associations
 
 // Validate environment variables before starting
@@ -31,18 +32,18 @@ app.use(express.json());
 
     // Health check endpoint
     app.get('/health', (req: Request, res: Response) => {
-      res.json({ status: 'ok', message: 'Commerce API is running' });
+      ResponseHandler.success(res, { status: 'ok' }, 'Commerce API is running');
     });
 
     // 404 handler
     app.use((req: Request, res: Response) => {
-      res.status(404).json({ error: 'Route not found' });
+      ResponseHandler.notFound(res, 'Route not found');
     });
 
     // Error handler
     app.use((err: any, req: Request, res: Response, next: any) => {
       console.error(err.stack);
-      res.status(500).json({ error: 'Something went wrong!' });
+      ResponseHandler.internalServerError(res, 'Something went wrong!');
     });
 
     app.listen(PORT, () => {

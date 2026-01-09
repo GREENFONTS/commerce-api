@@ -124,38 +124,60 @@ npm run dev
 
 #### Get All Products
 - **GET** `/api/products`
-- **Description**: Retrieve all available products
-- **Response**: Array of product objects
+- **Description**: Retrieve all available products with pagination
+- **Query Parameters** (optional):
+  - `page` - Page number (default: 1)
+  - `limit` - Items per page (default: 10, max: 100)
+- **Response**: Paginated response with products and pagination metadata
   ```json
-  [
-    {
-      "id": "prod_...",
-      "name": "Laptop",
-      "description": "High-performance laptop",
-      "price": 999.99,
-      "stock": 10,
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
+  {
+    "success": true,
+    "message": "Products retrieved successfully",
+    "data": [
+      {
+        "id": "prod_...",
+        "name": "Laptop",
+        "description": "High-performance laptop",
+        "price": 999.99,
+        "stock": 10,
+        "createdAt": "2024-01-01T00:00:00.000Z",
+        "updatedAt": "2024-01-01T00:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 50,
+      "totalPages": 5,
+      "hasNextPage": true,
+      "hasPreviousPage": false
     }
-  ]
+  }
   ```
+- **Examples**:
+  - Get first page: `GET /api/products`
+  - Get page 2 with 20 items: `GET /api/products?page=2&limit=20`
 
 ### Cart
 
 #### Get Cart Items
 - **GET** `/api/cart`
 - **Description**: Retrieve all items in the cart
-- **Response**: Array of cart item objects
+- **Response**: Standardized response with cart items
   ```json
-  [
-    {
-      "id": "cart_...",
-      "productId": "prod_...",
-      "quantity": 2,
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
-    }
-  ]
+  {
+    "success": true,
+    "message": "Cart items retrieved successfully",
+    "data": [
+      {
+        "id": "cart_...",
+        "productId": "prod_...",
+        "quantity": 2,
+        "createdAt": "2024-01-01T00:00:00.000Z",
+        "updatedAt": "2024-01-01T00:00:00.000Z"
+      }
+    ]
+  }
   ```
 
 #### Add Item to Cart
@@ -171,8 +193,21 @@ npm run dev
 - **Validation**: 
   - `productId` (required, string)
   - `quantity` (required, positive integer)
-- **Response**: Created cart item object
-- **Error**: Returns 400 if validation fails or quantity exceeds available stock
+- **Response**: Standardized response with created cart item
+  ```json
+  {
+    "success": true,
+    "message": "Item added to cart successfully",
+    "data": {
+      "id": "cart_...",
+      "productId": "prod_...",
+      "quantity": 2,
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  }
+  ```
+- **Error**: Returns 400 with error message if validation fails or quantity exceeds available stock
 
 #### Update Cart Item Quantity
 - **PUT** `/api/cart/:id`
@@ -186,51 +221,125 @@ npm run dev
   ```
 - **Validation**: 
   - `quantity` (required, positive integer)
-- **Response**: Updated cart item object
-- **Error**: Returns 400 if validation fails or quantity exceeds available stock
+- **Response**: Standardized response with updated cart item
+  ```json
+  {
+    "success": true,
+    "message": "Cart item updated successfully",
+    "data": {
+      "id": "cart_...",
+      "productId": "prod_...",
+      "quantity": 3,
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  }
+  ```
+- **Error**: Returns 400 with error message if validation fails or quantity exceeds available stock
 
 #### Remove Item from Cart
 - **DELETE** `/api/cart/:id`
 - **Description**: Remove an item from the cart
 - **URL Parameters**: `id` - Cart item ID
-- **Response**: 204 No Content
+- **Response**: Standardized success response
+  ```json
+  {
+    "success": true,
+    "message": "Cart item removed successfully",
+    "data": null
+  }
+  ```
+- **Error**: Returns 404 with error message if cart item not found
 
 ### Orders
 
 #### Get All Orders
 - **GET** `/api/orders`
-- **Description**: Retrieve all orders
-- **Response**: Array of order objects
+- **Description**: Retrieve all orders with pagination, or filter by ID, order number, or status
+- **Query Parameters** (optional):
+  - `id` - Filter by order ID (returns single order in array, no pagination)
+  - `orderNumber` - Filter by order number (returns single order in array, no pagination)
+  - `status` - Filter by order status (works with pagination). Valid values: `pending`, `processing`, `shipped`, `delivered`, `cancelled`
+  - `page` - Page number (default: 1, only used when not filtering by id/orderNumber)
+  - `limit` - Items per page (default: 10, max: 100, only used when not filtering by id/orderNumber)
+- **Response**: Paginated response with orders and pagination metadata (or array if filtered by id/orderNumber)
   ```json
-  [
-    {
-      "id": "order_...",
-      "items": [
-        {
-          "id": "oi_...",
-          "productId": "prod_...",
-          "productName": "Laptop",
-          "quantity": 1,
-          "price": 999.99,
-          "subtotal": 999.99
-        }
-      ],
-      "total": 999.99,
-      "createdAt": "2024-01-01T00:00:00.000Z"
+  {
+    "success": true,
+    "message": "Orders retrieved successfully",
+    "data": [
+      {
+        "id": "order_...",
+        "orderNumber": "ORD-...",
+        "status": "pending",
+        "items": [
+          {
+            "id": "oi_...",
+            "productId": "prod_...",
+            "productName": "Laptop",
+            "quantity": 1,
+            "price": 999.99,
+            "subtotal": 999.99
+          }
+        ],
+        "total": 999.99,
+        "createdAt": "2024-01-01T00:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 25,
+      "totalPages": 3,
+      "hasNextPage": true,
+      "hasPreviousPage": false
     }
-  ]
+  }
   ```
+- **Examples**:
+  - Get all orders: `GET /api/orders`
+  - Get orders with pagination: `GET /api/orders?page=2&limit=20`
+  - Filter by status: `GET /api/orders?status=pending`
+  - Filter by ID: `GET /api/orders?id=550e8400-e29b-41d4-a716-446655440000`
+  - Filter by order number: `GET /api/orders?orderNumber=ORD-1234567890-ABC123`
 
 #### Checkout
 - **POST** `/api/checkout`
 - **Description**: Process checkout and create an order
-- **Response**: Created order object
+- **Request Body** (optional):
+  ```json
+  {
+    "email": "customer@example.com",
+    "name": "John Doe",
+    "shippingAddress": "123 Main St, City, Country",
+    "notes": "Please leave at front door"
+  }
+  ```
+- **Response**: Standardized response with created order
+  ```json
+  {
+    "success": true,
+    "message": "Order created successfully",
+    "data": {
+      "id": "order_...",
+      "orderNumber": "ORD-...",
+      "status": "pending",
+      "items": [...],
+      "total": 999.99,
+      "customerEmail": "customer@example.com",
+      "customerName": "John Doe",
+      "shippingAddress": "123 Main St, City, Country",
+      "notes": "Please leave at front door",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  }
+  ```
 - **Business Logic**:
   - Validates all cart items have sufficient stock
   - Reduces product stock for each item
   - Creates order with calculated totals
   - Clears the cart automatically
-- **Error**: Returns 400 if cart is empty or stock is insufficient
+- **Error**: Returns 400 with error message if cart is empty or stock is insufficient
 
 ## Business Rules
 
@@ -240,9 +349,13 @@ npm run dev
 
 ## Example Usage
 
-### 1. Get all products
+### 1. Get all products (paginated)
 ```bash
+# Get first page (default: 10 items per page)
 curl http://localhost:3000/api/products
+
+# Get page 2 with 20 items per page
+curl http://localhost:3000/api/products?page=2&limit=20
 ```
 
 ### 2. Add item to cart
@@ -269,9 +382,22 @@ curl -X DELETE http://localhost:3000/api/cart/cart_...
 curl -X POST http://localhost:3000/api/checkout
 ```
 
-### 6. Get all orders
+### 6. Get orders
 ```bash
+# Get all orders (paginated)
 curl http://localhost:3000/api/orders
+
+# Get orders with pagination
+curl http://localhost:3000/api/orders?page=2&limit=20
+
+# Filter by status
+curl http://localhost:3000/api/orders?status=pending
+
+# Filter by ID
+curl http://localhost:3000/api/orders?id=550e8400-e29b-41d4-a716-446655440000
+
+# Filter by order number
+curl http://localhost:3000/api/orders?orderNumber=ORD-1234567890-ABC123
 ```
 
 ## Project Structure
@@ -279,14 +405,21 @@ curl http://localhost:3000/api/orders
 ```
 commerce-api/
 ├── src/
-│   ├── models/
-│   │   ├── Product.ts
-│   │   ├── CartItem.ts
-│   │   ├── Order.ts
-│   │   └── OrderItem.ts
+│   ├── models/               # Data models/interfaces and Sequelize models
+│   │   ├── Product.model.ts
+│   │   ├── CartItem.model.ts
+│   │   ├── Order.model.ts
+│   │   ├── OrderItem.model.ts
+│   │   └── index.ts          # Model initialization and associations
+│   ├── types/                # TypeScript type helpers
+│   │   └── sequelize.ts      # Sequelize type helpers
 │   ├── database/
 │   │   ├── config.ts         # Sequelize configuration
 │   │   └── seeders/          # Database seeders
+│   │       └── seed.ts
+│   ├── utils/                # Utility functions
+│   │   ├── env.ts            # Environment variable validation
+│   │   └── response.ts       # Standardized response handlers
 │   ├── repositories/
 │   │   ├── ProductRepository.ts
 │   │   ├── CartRepository.ts

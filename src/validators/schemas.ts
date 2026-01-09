@@ -35,12 +35,5 @@ export const checkoutSchema = Joi.object({
   notes: Joi.string().optional().messages({
     'string.base': 'notes must be a string',
   }),
-}).min(0); 
-
-export const updateOrderStatusSchema = Joi.object({
-  status: Joi.string().valid('pending', 'processing', 'shipped', 'delivered', 'cancelled').required().messages({
-    'any.only': 'status must be one of: pending, processing, shipped, delivered, cancelled',
-    'any.required': 'status is required',
-  }),
-});
+}).min(0);
 

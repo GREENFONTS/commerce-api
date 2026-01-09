@@ -1,13 +1,14 @@
 import { Request, Response } from 'express';
 import { cartService } from '../services/CartService';
+import { ResponseHandler } from '../utils/response';
 
 export class CartController {
   async getCartItems(req: Request, res: Response): Promise<void> {
     try {
       const cartItems = await cartService.getAllCartItems();
-      res.json(cartItems);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch cart items' });
+      ResponseHandler.success(res, cartItems, 'Cart items retrieved successfully');
+    } catch (error: any) {
+      ResponseHandler.internalServerError(res, error.message || 'Failed to fetch cart items');
     }
   }
 
@@ -15,9 +16,9 @@ export class CartController {
     try {
       const { productId, quantity } = req.body;
       const cartItem = await cartService.addItemToCart(productId, quantity);
-      res.status(201).json(cartItem);
+      ResponseHandler.success(res, cartItem, 'Item added to cart successfully', 201);
     } catch (error: any) {
-      res.status(400).json({ error: error.message || 'Failed to add item to cart' });
+      ResponseHandler.badRequest(res, error.message || 'Failed to add item to cart');
     }
   }
 
@@ -26,9 +27,9 @@ export class CartController {
       const { id } = req.params;
       const { quantity } = req.body;
       const cartItem = await cartService.updateCartItemQuantity(id, quantity);
-      res.json(cartItem);
+      ResponseHandler.success(res, cartItem, 'Cart item updated successfully');
     } catch (error: any) {
-      res.status(400).json({ error: error.message || 'Failed to update cart item' });
+      ResponseHandler.badRequest(res, error.message || 'Failed to update cart item');
     }
   }
 
@@ -36,9 +37,9 @@ export class CartController {
     try {
       const { id } = req.params;
       await cartService.removeItemFromCart(id);
-      res.status(204).send();
+      ResponseHandler.success(res, null, 'Cart item removed successfully');
     } catch (error: any) {
-      res.status(404).json({ error: error.message || 'Cart item not found' });
+      ResponseHandler.notFound(res, error.message || 'Cart item not found');
     }
   }
 }

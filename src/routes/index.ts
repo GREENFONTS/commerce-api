@@ -3,7 +3,7 @@ import { productController } from '../controllers/ProductController';
 import { cartController } from '../controllers/CartController';
 import { orderController } from '../controllers/OrderController';
 import { validate } from '../middleware/validation';
-import { addToCartSchema, updateCartItemSchema, checkoutSchema, updateOrderStatusSchema } from '../validators/schemas';
+import { addToCartSchema, updateCartItemSchema, checkoutSchema } from '../validators/schemas';
 
 const router = Router();
 
@@ -18,10 +18,7 @@ router.delete('/cart/:id', (req, res) => cartController.removeItemFromCart(req, 
 
 // Order routes
 router.get('/orders', (req, res) => orderController.getAllOrders(req, res));
-router.get('/orders/:id', (req, res) => orderController.getOrderById(req, res));
-router.get('/orders/number/:orderNumber', (req, res) => orderController.getOrderByOrderNumber(req, res));
 router.post('/checkout', validate(checkoutSchema), (req, res) => orderController.checkout(req, res));
-router.patch('/orders/:id/status', validate(updateOrderStatusSchema), (req, res) => orderController.updateOrderStatus(req, res));
 
 export default router;
 

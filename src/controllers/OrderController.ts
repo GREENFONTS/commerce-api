@@ -1,41 +1,47 @@
 import { Request, Response } from 'express';
 import { orderService } from '../services/OrderService';
+import { ResponseHandler, PaginationParams } from '../utils/response';
+import { Order } from '../models/Order.model';
 
 export class OrderController {
   async getAllOrders(req: Request, res: Response): Promise<void> {
     try {
-      const orders = await orderService.getAllOrders();
-      res.json(orders);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch orders' });
-    }
-  }
-
-  async getOrderById(req: Request, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const order = await orderService.getOrderById(id);
-      if (!order) {
-        res.status(404).json({ error: 'Order not found' });
-        return;
+      const { id, orderNumber, status, page, limit } = req.query;
+      
+      const query: { id?: string; orderNumber?: string; status?: Order['status'] } = {};
+      if (id) query.id = id as string;
+      if (orderNumber) query.orderNumber = orderNumber as string;
+      if (status) {
+        const validStatuses: Order['status'][] = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+        if (validStatuses.includes(status as Order['status'])) {
+          query.status = status as Order['status'];
+        }
       }
-      res.json(order);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || 'Failed to fetch order' });
-    }
-  }
 
-  async getOrderByOrderNumber(req: Request, res: Response): Promise<void> {
-    try {
-      const { orderNumber } = req.params;
-      const order = await orderService.getOrderByOrderNumber(orderNumber);
-      if (!order) {
-        res.status(404).json({ error: 'Order not found' });
-        return;
+      // If filtering by id or orderNumber, don't paginate (return single result)
+      const shouldPaginate = !id && !orderNumber;
+      
+      const pagination: PaginationParams | undefined = shouldPaginate
+        ? {
+            page: Math.max(1, parseInt(page as string) || 1),
+            limit: Math.min(100, Math.max(1, parseInt(limit as string) || 10)),
+          }
+        : undefined;
+      
+      const result = await orderService.getAllOrders(query, pagination);
+
+      if (result instanceof Array) {
+        ResponseHandler.success(res, result, 'Orders retrieved successfully');
+      } else {
+        ResponseHandler.successWithPagination(
+          res,
+          result.data,
+          result.pagination,
+          'Orders retrieved successfully'
+        );
       }
-      res.json(order);
     } catch (error: any) {
-      res.status(500).json({ error: error.message || 'Failed to fetch order' });
+      ResponseHandler.internalServerError(res, error.message || 'Failed to fetch orders');
     }
   }
 
@@ -48,25 +54,9 @@ export class OrderController {
         shippingAddress,
         notes,
       });
-      res.status(201).json(order);
+      ResponseHandler.success(res, order, 'Order created successfully', 201);
     } catch (error: any) {
-      res.status(400).json({ error: error.message || 'Failed to checkout' });
-    }
-  }
-
-  async updateOrderStatus(req: Request, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-
-      const order = await orderService.updateOrderStatus(id, status);
-      if (!order) {
-        res.status(404).json({ error: 'Order not found' });
-        return;
-      }
-      res.json(order);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message || 'Failed to update order status' });
+      ResponseHandler.badRequest(res, error.message || 'Failed to checkout');
     }
   }
 }
